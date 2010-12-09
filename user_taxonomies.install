@@ -1,0 +1,18 @@
+<?php
+/**
+ * Implementation of hook_install().
+ */
+function user_taxonomies_install() {
+  //~ db_query("UPDATE {system} SET weight = 5 WHERE name = 'avatar_video_attach'");
+}
+
+/**
+ * Implementation of hook_uninstall().
+ */
+function user_taxonomies_uninstall() {
+  /*foreach (node_get_types('names') as $type => $type_name) {
+    variable_del('ant_'. $type);
+    variable_del('ant_pattern_'. $type);
+    variable_del('ant_php_'. $type);
+  }/**/
+}

@@ -1,0 +1,8 @@
+name = User Taxonomies
+description = Custom user taxonomies
+core = 6.x
+package = NoJoShmo - Custom Modules
+
+version = "6.x-1-dev"
+core = "6.x"
+

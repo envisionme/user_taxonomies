@@ -1,0 +1,265 @@
+<?php
+
+define('USER_VOCAB', 21);
+//~ define('content-types', array('audio', 'documents', 'images', 'slides', 'video'));
+
+function user_taxonomies_menu() {
+  $items = array();
+  $items['user-taxonomies/autocomplete'] = array(
+    'page callback' => 'user_taxonomies_autocomplete',
+    'access callback' => TRUE,
+    'type' => MENU_CALLBACK
+  );
+  return $items;
+}
+/*// We alter the behaviour of the menu that controls the autocomplete features by calling our custom function
+function user_taxonomies_menu_alter(&$callbacks) {
+  $callbacks["taxonomy/autocomplete"]['page callback'] = 'user_taxonomies_autocomplete';
+}
+
+// This function is a modified version of the taxonomy_autocomplete function founded on taxonomy.module. We just change the query to fetch only the desired terms
+function user_taxonomies_autocomplete($vid, $string = '') {
+  global $user;
+  // The user enters a comma-separated list of tags. We only autocomplete the last tag.
+  $array = drupal_explode_tags($string);
+
+  // Fetch last tag
+  $last_string = trim(array_pop($array));
+  $matches = array();
+  if ($last_string != '') {
+    $result = db_query_range(db_rewrite_sql("SELECT t.tid, t.name FROM {term_data} t INNER JOIN {term_node} r ON r.tid = t.tid INNER JOIN {node} n ON n.vid = r.vid WHERE t.vid = %d AND n.uid = %d AND LOWER(t.name) LIKE LOWER('%%%s%%')", 't', 'tid'), $vid, $user->uid, $last_string, 0, 10);
+
+    $prefix = count($array) ? implode(', ', $array) .', ' : '';
+
+    while ($tag = db_fetch_object($result)) {
+      $n = $tag->name;
+      // Commas and quotes in terms are special cases, so encode 'em.
+      if (strpos($tag->name, ',') !== FALSE || strpos($tag->name, '"') !== FALSE) {
+        $n = '"'. str_replace('"', '""', $tag->name) .'"';
+      }
+      $matches[$prefix . $n] = check_plain($tag->name);
+    }
+  }
+}/**/
+/**
+ * Implementation of hook_form_alter().
+ */
+function user_taxonomies_form_alter(&$form, $form_state, $form_id) {
+  if ($form_id == 'uprofile_node_form' || $form_id == 'company_node_form') {
+    //~ print_r($form);
+    //~ create new taxonomy tree if none set for this user
+    if (taxonomy_get_term_by_name('uid-'.$form['uid']['#value']) == null) {
+      user_taxonomies_generate($form['uid']['#value']);
+    }
+    /*//~ print_r($form);
+    $default_video = _avatar_video_attach_get_videos($form['uid']['#value']);
+    
+    $form['avatar'] = array(
+     '#type' => 'fieldset', 
+     '#title' => t('Profile Video')
+    );
+    
+    if (empty($default_video)) {
+    $form['avatar']['field_video_link'] = array(
+      '#type' => 'textfield',
+      '#title' => t('Introductory Video Link'),
+      '#default_value' =>  '', 
+      '#size' => 60, 
+      '#maxlength' => 128, 
+      '#required' => FALSE,
+    );
+    $form['#submit'][] = 'avatar_video_attach_node_form_textfield_submit';
+    } else {
+      // Get flagged node
+      $flag = flag_get_user_flags('node',null, $form['uid']['#value']);
+      $default_nid = 0;
+      if (!empty($flag['profile_video'])) {
+        foreach($flag['profile_video'] as $flag) {
+          $node = node_load($flag->content_id);
+          $default_nid = $node->nid;
+        }
+      }
+      $form['avatar']['field_video_link'] = array(
+        '#type' => 'select', 
+        '#title' => t('Choose your profile video'), 
+        '#default_value' => $default_nid,
+        '#options' => $default_video,
+        '#description' => t('Please choose one of your video files to use as a profile video.'),
+      );
+      $form['#submit'][] = 'avatar_video_attach_node_form_select_submit';
+    }
+    //~ print_r($form);
+  } elseif ($form_id == 'video_node_form') {
+    //~ print_r($form);
+    //~ $form['#submit'][] = 'avatar_video_attach_node_form_submit';/**/
+    //~ $form['#submit'][] = 'user_taxonomies_submit';
+  } 
+//~ Audio
+  elseif ($form_id == 'showcase_audio_node_form') {
+    $form['taxonomy'][USER_VOCAB]['#options'] = array();
+    if (taxonomy_get_term_by_name('uid-'.$form['uid']['#value']) == null) {
+      user_taxonomies_generate($form['uid']['#value']);
+    }
+    $uid_term = taxonomy_get_term_by_name('uid-'.$form['uid']['#value']);
+    $base_tree = taxonomy_get_children($uid_term[0]->tid, USER_VOCAB);
+    //~ print_r($base_tree);
+    
+    $section = null;
+    foreach($base_tree as $base) {
+      if ($base->name == 'audio') {
+        $section = $base->tid;
+        break;
+      }
+    }
+    $form['field_showcase_menu']['tids']['#config']['params']['tid'] = $section;
+    //~ $form['field_showcase_menu']['tids']['#config']['params']['depth'] = 0;
+    $form['field_showcase_menu']['tids']['#config']['params']['parent'] = $section;
+  } 
+//~ Documents
+  elseif ($form_id == 'showcase_document_node_form') {
+    $form['taxonomy'][USER_VOCAB]['#options'] = array();
+    if (taxonomy_get_term_by_name('uid-'.$form['uid']['#value']) == null) {
+      user_taxonomies_generate($form['uid']['#value']);
+    }
+    $uid_term = taxonomy_get_term_by_name('uid-'.$form['uid']['#value']);
+    $base_tree = taxonomy_get_children($uid_term[0]->tid, USER_VOCAB);
+    //~ print_r($base_tree);
+    
+    $section = null;
+    foreach($base_tree as $base) {
+      if ($base->name == 'documents') {
+        $section = $base->tid;
+        break;
+      }
+    }
+    $form['field_showcase_menu']['tids']['#config']['params']['tid'] = $section;
+    //~ $form['field_showcase_menu']['tids']['#config']['params']['depth'] = 0;
+    $form['field_showcase_menu']['tids']['#config']['params']['parent'] = $section;
+  }
+//~ Images
+  elseif ($form_id == 'showcase_image_node_form') {
+    $form['taxonomy'][USER_VOCAB]['#options'] = array();
+    if (taxonomy_get_term_by_name('uid-'.$form['uid']['#value']) == null) {
+      user_taxonomies_generate($form['uid']['#value']);
+    }
+    $uid_term = taxonomy_get_term_by_name('uid-'.$form['uid']['#value']);
+    $base_tree = taxonomy_get_children($uid_term[0]->tid, USER_VOCAB);
+    //~ print_r($base_tree);
+    
+    $section = null;
+    foreach($base_tree as $base) {
+      if ($base->name == 'images') {
+        $section = $base->tid;
+        break;
+      }
+    }
+    $form['field_showcase_menu']['tids']['#config']['params']['tid'] = $section;
+    //~ $form['field_showcase_menu']['tids']['#config']['params']['depth'] = 0;
+    $form['field_showcase_menu']['tids']['#config']['params']['parent'] = $section;
+  }
+//~ Slide
+  elseif ($form_id == 'showcase_slide_node_form') {
+    //~ print_r($form);
+    $form['taxonomy'][USER_VOCAB]['#options'] = array();
+    if (taxonomy_get_term_by_name('uid-'.$form['uid']['#value']) == null) {
+      user_taxonomies_generate($form['uid']['#value']);
+    }
+    $uid_term = taxonomy_get_term_by_name('uid-'.$form['uid']['#value']);
+    $base_tree = taxonomy_get_children($uid_term[0]->tid, USER_VOCAB);
+    //~ print_r($base_tree);
+    
+    $section = null;
+    foreach($base_tree as $base) {
+      if ($base->name == 'slides') {
+        $section = $base->tid;
+        break;
+      }
+    }
+    $form['field_showcase_menu']['tids']['#config']['params']['tid'] = $section;
+    //~ $form['field_showcase_menu']['tids']['#config']['params']['depth'] = 0;
+    $form['field_showcase_menu']['tids']['#config']['params']['parent'] = $section;
+  }
+//~ Video
+  elseif ($form_id == 'showcase_video_node_form') {
+    $form['taxonomy'][USER_VOCAB]['#options'] = array();
+    if (taxonomy_get_term_by_name('uid-'.$form['uid']['#value']) == null) {
+      user_taxonomies_generate($form['uid']['#value']);
+    }
+    $uid_term = taxonomy_get_term_by_name('uid-'.$form['uid']['#value']);
+    $base_tree = taxonomy_get_children($uid_term[0]->tid, USER_VOCAB);
+    //~ print_r($base_tree);
+    
+    $section = null;
+    foreach($base_tree as $base) {
+      if ($base->name == 'video') {
+        $section = $base->tid;
+        break;
+      }
+    }
+    $form['field_showcase_menu']['tids']['#config']['params']['tid'] = $section;
+    //~ $form['field_showcase_menu']['tids']['#config']['params']['depth'] = 0;
+    $form['field_showcase_menu']['tids']['#config']['params']['parent'] = $section;
+  }
+  //~ echo $form_id;
+}
+
+function user_taxonomies_submit($form, &$form_state, $form_id) {
+
+  //~ print_r($form_state);
+  
+}
+
+//~ generate user taxonomy tree
+function user_taxonomies_generate($uid) {
+  drupal_set_message('No user taxonomy found! The system will now attempt to generate one for you.',true);
+  $term = array(
+    'vid' => USER_VOCAB, // Voacabulary ID
+    'name' => 'uid-'.$uid, // Term Name 
+    //~ 'synonyms' => 'Druplet', // (Optional) Synonym of this term
+    //~ 'parent' => 11, // (Optional) Term ID of a parent term  
+    //~ 'relations' => array(15), // (Optional) Related Term IDs 
+  );
+  taxonomy_save_term($term);
+
+  //~ generate children
+  $types = array('audio', 'documents', 'images', 'slides', 'video');
+  foreach($types as $type) {
+    $tmp = array('vid' => USER_VOCAB, 'name' => $type, 'parent' => $term['tid']);
+    taxonomy_save_term($tmp);
+  }
+  // If there are more than one synonyms then you can concatenate each synonym with '\r\n' , i.e.
+  // 'synonyms' => "Druplet\r\nDrup\r\nUltimate Drupal", // These are three synonyms - Druplet, Drup, Ultimate Drupal
+
+  // If there are more than one parent then you can add each parent in an array i.e.
+  // 'parent' => array(11, 10, 13),
+  // You can nest as many parents as you want
+  // 'parent' => array(11, array(9, 10), 13),
+
+  // If there are more than one relations to this term then you can add each relation in an array i.e.
+  // 'relations' => array(15, 16, 17),
+}
+
+function user_taxonomies_autocomplete($vid, $tid, $string = '') {
+  // The user enters a comma-separated list of tags. We only autocomplete the last tag.
+  $array = drupal_explode_tags($string);
+
+  // Fetch last tag
+  $last_string = trim(array_pop($array));
+  $matches = array();
+  if ($last_string != '') {
+    $result = db_query_range(db_rewrite_sql("SELECT t.tid, t.name FROM {term_data} t INNER JOIN {term_hierarchy} h ON t.tid = h.tid WHERE t.vid = %d AND h.parent = %d AND LOWER(t.name) LIKE LOWER('%%%s%%')", 't', 'tid'), $vid, $tid, $last_string, 0, 10);
+
+    $prefix = count($array) ? implode(', ', $array) .', ' : '';
+
+    while ($tag = db_fetch_object($result)) {
+      $n = $tag->name;
+      // Commas and quotes in terms are special cases, so encode 'em.
+      if (strpos($tag->name, ',') !== FALSE || strpos($tag->name, '"') !== FALSE) {
+        $n = '"'. str_replace('"', '""', $tag->name) .'"';
+      }
+      $matches[$prefix . $n] = check_plain($tag->name);
+    }
+  }
+  $matche = 'test';
+  drupal_json($matches);
+}
