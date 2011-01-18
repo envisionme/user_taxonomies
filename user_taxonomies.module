@@ -46,7 +46,6 @@ function user_taxonomies_autocomplete($vid, $string = '') {
  */
 function user_taxonomies_form_alter(&$form, $form_state, $form_id) {
   if ($form_id == 'uprofile_node_form' || $form_id == 'company_node_form') {
-    //~ print_r($form);
     //~ create new taxonomy tree if none set for this user
     if (taxonomy_get_term_by_name('uid-'.$form['uid']['#value']) == null) {
       user_taxonomies_generate($form['uid']['#value']);
@@ -211,13 +210,10 @@ function user_taxonomies_submit($form, &$form_state, $form_id) {
 
 //~ generate user taxonomy tree
 function user_taxonomies_generate($uid) {
-  drupal_set_message('No user taxonomy found! The system will now attempt to generate one for you.',true);
+  // No user taxonomy found! The system will now attempt to generate one for you
   $term = array(
     'vid' => USER_VOCAB, // Voacabulary ID
     'name' => 'uid-'.$uid, // Term Name 
-    //~ 'synonyms' => 'Druplet', // (Optional) Synonym of this term
-    //~ 'parent' => 11, // (Optional) Term ID of a parent term  
-    //~ 'relations' => array(15), // (Optional) Related Term IDs 
   );
   taxonomy_save_term($term);
 
